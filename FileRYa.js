@@ -123,7 +123,7 @@ var walk = (dir,cb)=> {
 				if(stat && (stat.isDirectory() || (!conf.nosym && stat.isSymbolicLink()))	//checks if file is directory, or symlink
 					) {	
 					walk(file, (err,res)=>{	//will keep recursively traversing
-						if(err) return cb(err);
+						if(err) return cb(err);	//essentially executes the callback and immediately quits from further execution
 						results = results.concat(res);
 						if(--pending == 0) cb(null, results);	//pending has just one element, eval callback...
 					});
