@@ -170,7 +170,8 @@ module.exports = (dir,config)=>{
 				var len = Object.keys(fileData).length - 2;
 				console._stdout.write('\r' + 
 					"Progress: " + Math.round((cnt*100) / fileData['total']) + '%\t' + 
-					"Duplicates: " + (100 - Math.round((len*100) / fileData['total'])) + '%\t' + 
+					"Duplicates/unexplored: " + (res.length - len) + '\t' + 
+					//"Duplicates: " + (100 - Math.round((len*100) / fileData['total'])) + '%\t' + 
 					"Originals: " + len + '\t\t\t');
 			};
 
