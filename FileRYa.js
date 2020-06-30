@@ -12,8 +12,8 @@ const conf = {		//this variable allows you to edit the default config
 	blacklist: true,	//blacklist of files(array of file names, no regex), 'true' means NO BLACKLIST...
 	dir: process.cwd(),	//directory to check
 	debug: true,	//print the debug statements
-	online: false,	//basically, it will show duplicates detected WHILE performing traversal
-	nosym: true,	//not follow symlinks
+	online: false,	//if true, it will show duplicates detected WHILE performing traversal
+	nosym: true,	//if true, do not follow symlinks
 	maxSize: false,	//feature to prevent scanning LARGE files(to save time)(store integer of max size)...
 	maxStreams: 1000,	//the streams spawn limit(don't want a buffer overflow!!)
 	writeData: true	//write the fileData object...
@@ -118,10 +118,12 @@ var walk = (dir,cb)=> {
 
 		list.forEach((file)=>{
 			var file = path.resolve(dir,file);	//will resolve the full path of file
+			if(file.indexOf('System Volume Information') > -1) return --pending;	// skip the system file (also reduce pending count)
+			
 			fs.stat(file, (err, stat)=>{	//check status of file
 				if(err) return cb(err);
 				if(stat && (stat.isDirectory() || (!conf.nosym && stat.isSymbolicLink()))	//checks if file is directory, or symlink
-					) {	
+					) {
 					walk(file, (err,res)=>{	//will keep recursively traversing
 						if(err) return cb(err);	//essentially executes the callback and immediately quits from further execution
 						results = results.concat(res);
@@ -143,6 +145,19 @@ var walk = (dir,cb)=> {
 
 var write = ()=>{
 		fs.writeFileSync(path.resolve(conf.dir , 'fileData.json'), JSON.stringify(fileData));	//save object to file for further operations
+		
+		//also write out a TSV format file for easier statistics
+		// following a greedy strategy, where files with most copies taking up most space are given higher weightage
+		// for example ten 1MB files will be given more weightage than two 4MB files (which would not have happened if individual file size was considered)
+		let csv = '';
+		for(var hash in fileData) {
+			var row = '';
+			row += (fileData[hash][0] * (fileData[hash].length - 2)) + ',';	// the total consumed space excluding original
+			for(var list in fileData[hash]) row += (fileData[hash][list] + '').replace(/\,/gi, '%2C') + ',';
+			csv += row + '\n';
+		}
+		fs.writeFileSync(path.resolve(conf.dir , 'fileData.csv'), csv);
+
 		if(conf.debug) console.log("Written object to: ", path.resolve(conf.dir , 'fileData.json'));	
 }
 
@@ -159,6 +174,7 @@ module.exports = (dir,config)=>{
 		conf.maxStreams = config.maxStreams || conf.maxStreams;
 	}
 	conf.dir = dir || conf.dir;
+	console.log("Walking the directory tree...");
 	walk(conf.dir , (err,res)=>{	//will run if called as module
 		if(err) throw err;
 		if(conf.debug) console.log("Number of files: ",res.length);
